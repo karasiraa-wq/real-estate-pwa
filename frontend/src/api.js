@@ -65,6 +65,39 @@ export async function submitListing(data) {
   return response.json()
 }
 
+/**
+ * Approved listings for the tenant feed, newest first (the public endpoint
+ * only ever returns approved listings). Empty filter values are omitted.
+ */
+export async function fetchListings({ q, property_type, min_rent, max_rent } = {}) {
+  const params = new URLSearchParams()
+  if (q && q.trim()) params.set('q', q.trim())
+  if (property_type) params.set('property_type', property_type)
+  if (min_rent != null) params.set('min_rent', min_rent)
+  if (max_rent != null) params.set('max_rent', max_rent)
+  const query = params.toString()
+  let response
+  try {
+    response = await fetch(`${BASE}/api/listings${query ? `?${query}` : ''}`)
+  } catch {
+    throw new ApiError(NETWORK_MESSAGE)
+  }
+  if (!response.ok) throw await parseError(response)
+  return response.json()
+}
+
+/** One approved listing with full details; 404s if it is not approved. */
+export async function fetchListing(id) {
+  let response
+  try {
+    response = await fetch(`${BASE}/api/listings/${id}`)
+  } catch {
+    throw new ApiError(NETWORK_MESSAGE)
+  }
+  if (!response.ok) throw await parseError(response)
+  return response.json()
+}
+
 async function adminRequest(path, token, options = {}) {
   let response
   try {

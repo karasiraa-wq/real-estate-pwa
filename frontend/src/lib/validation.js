@@ -69,6 +69,10 @@ export function validateListing(values, photoCount) {
   return errors
 }
 
+export function propertyTypeLabel(value) {
+  return PROPERTY_TYPES.find((t) => t.value === value)?.label ?? value
+}
+
 export function formatUGX(value) {
   const n = Number(String(value).replace(/[,\s]/g, ''))
   if (!Number.isFinite(n) || n <= 0) return null

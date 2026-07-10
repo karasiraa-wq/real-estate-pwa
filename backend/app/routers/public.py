@@ -3,7 +3,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Request, UploadFile
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from ..deps import get_db, limit_photo_uploads, limit_submissions
@@ -11,6 +11,7 @@ from ..models import Listing, ListingStatus, Photo
 from ..schemas import (
     ListingSubmission,
     PhotoUploadResponse,
+    PropertyType,
     PublicListingCard,
     PublicListingDetail,
     SubmissionResponse,
@@ -104,14 +105,34 @@ async def upload_photo(
 
 @router.get("", response_model=list[PublicListingCard])
 def list_approved(
+    q: str | None = Query(default=None, max_length=120, description="Location or title text"),
+    property_type: PropertyType | None = None,
+    min_rent: int | None = Query(default=None, ge=0),
+    max_rent: int | None = Query(default=None, ge=0),
     limit: int = Query(default=20, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ):
+    # Filters only ever narrow the mandatory APPROVED clause; they can never widen it.
+    stmt = select(Listing).where(Listing.status == APPROVED)
+    if q and q.strip():
+        like = f"%{q.strip()}%"
+        stmt = stmt.where(
+            or_(
+                Listing.district.ilike(like),
+                Listing.area.ilike(like),
+                Listing.landmark.ilike(like),
+                Listing.title.ilike(like),
+            )
+        )
+    if property_type is not None:
+        stmt = stmt.where(Listing.property_type == property_type.value)
+    if min_rent is not None:
+        stmt = stmt.where(Listing.rent_ugx >= min_rent)
+    if max_rent is not None:
+        stmt = stmt.where(Listing.rent_ugx <= max_rent)
     rows = db.scalars(
-        select(Listing)
-        .where(Listing.status == APPROVED)
-        .order_by(Listing.reviewed_at.desc(), Listing.id.desc())
+        stmt.order_by(Listing.reviewed_at.desc(), Listing.id.desc())
         .limit(limit)
         .offset(offset)
     )
