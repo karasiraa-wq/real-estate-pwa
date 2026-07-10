@@ -65,6 +65,39 @@ export async function submitListing(data) {
   return response.json()
 }
 
+async function adminRequest(path, token, options = {}) {
+  let response
+  try {
+    response = await fetch(`${BASE}/api/admin${path}`, {
+      ...options,
+      headers: {
+        'X-Admin-Token': token,
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      },
+    })
+  } catch {
+    throw new ApiError(NETWORK_MESSAGE)
+  }
+  if (!response.ok) throw await parseError(response)
+  return response.json()
+}
+
+/** Pending listings, oldest first. Also serves as the login check (401 on bad token). */
+export function fetchAdminQueue(token) {
+  return adminRequest('/listings', token)
+}
+
+export function approveListing(token, listingId) {
+  return adminRequest(`/listings/${listingId}/approve`, token, { method: 'POST' })
+}
+
+export function rejectListing(token, listingId, reason) {
+  return adminRequest(`/listings/${listingId}/reject`, token, {
+    method: 'POST',
+    body: JSON.stringify({ reason: reason || null }),
+  })
+}
+
 /** Upload one compressed photo blob to a just-submitted listing. */
 export async function uploadPhoto(listingId, photoToken, blob, name = 'photo.jpg') {
   const form = new FormData()
