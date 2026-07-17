@@ -8,3 +8,5 @@ node_modules/
 dist/
 uploads/
 .claude/settings.local.json*
+backend/*.db
+backend/*.db.bak*
