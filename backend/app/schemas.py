@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from .models import ListingCategory
+from .models import ListingCategory, PaymentProduct
 
 
 class PropertyType(str, enum.Enum):
@@ -149,6 +149,10 @@ class PublicListingCard(BaseModel):
     tenure: str | None = None
     title_status: str | None = None
     photo_url: str | None = None
+    # Rental access tier ("standard" | "premium" by rent vs the threshold).
+    # Only populated while the paywall is live, so the dark-launch UI is
+    # byte-identical to today; always null for land.
+    tier: str | None = None
 
 
 class PublicListingDetail(PublicListingCard):
@@ -212,6 +216,11 @@ class TenantMe(BaseModel):
     reveals_count: int
     # Lets the client hide all payment UI while the paywall ships dark.
     paywall_enabled: bool
+    # Premium Day Pass state. "active" | "none" | "expired"; an exhausted but
+    # unexpired pass reports active with 0 reveals remaining.
+    premium_pass_status: str = "none"
+    premium_pass_expires_at: datetime | None = None
+    premium_pass_reveals_remaining: int | None = None
 
 
 class ContactResponse(BaseModel):
@@ -221,6 +230,25 @@ class ContactResponse(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     credits_remaining: int
+    # Reveals left on the tenant's active day pass; null when no active pass.
+    pass_reveals_remaining: int | None = None
+
+
+def _reconcile_product(payload) -> None:
+    """Old clients send only category (rental|land); new ones send product.
+    Whichever arrives, both fields end up consistent."""
+    if payload.product is None:
+        payload.product = (
+            PaymentProduct.LAND.value
+            if payload.category == ListingCategory.LAND.value
+            else PaymentProduct.STANDARD_RENTAL.value
+        )
+    # A premium pass is a rental product; land credits are the land product.
+    payload.category = (
+        ListingCategory.LAND.value
+        if payload.product == PaymentProduct.LAND.value
+        else ListingCategory.RENTAL.value
+    )
 
 
 class PaymentClaimCreate(BaseModel):
@@ -228,6 +256,12 @@ class PaymentClaimCreate(BaseModel):
 
     momo_tx_id: str = Field(min_length=4, max_length=64, pattern=r"^[A-Za-z0-9.\-]+$")
     category: ListingCategory = ListingCategory.RENTAL
+    product: PaymentProduct | None = None
+
+    @model_validator(mode="after")
+    def reconcile(self) -> "PaymentClaimCreate":
+        _reconcile_product(self)
+        return self
 
 
 class PaymentClaimResponse(BaseModel):
@@ -236,6 +270,7 @@ class PaymentClaimResponse(BaseModel):
     id: int
     momo_tx_id: str
     category: str
+    product: str
     status: str
     created_at: datetime
 
@@ -249,19 +284,30 @@ class ManualGrantRequest(BaseModel):
 
     phone: str
     momo_tx_id: str = Field(min_length=4, max_length=64, pattern=r"^[A-Za-z0-9.\-]+$")
+    # Only meaningful for credit bundles; a day pass has a fixed reveal cap.
     credits: int | None = Field(default=None, gt=0, le=1000)
     category: ListingCategory = ListingCategory.RENTAL
+    product: PaymentProduct | None = None
 
     @field_validator("phone")
     @classmethod
     def normalize(cls, v: str) -> str:
         return normalize_ug_phone(v)
 
+    @model_validator(mode="after")
+    def reconcile(self) -> "ManualGrantRequest":
+        _reconcile_product(self)
+        return self
+
 
 class GrantResponse(BaseModel):
     id: int
     tenant_phone: str
-    credits: int
+    # Credits granted for bundle products; null for a premium pass.
+    credits: int | None = None
     category: str
+    product: str
     momo_tx_id: str
     source: str
+    # Premium pass only: when the granted pass stops working.
+    expires_at: datetime | None = None

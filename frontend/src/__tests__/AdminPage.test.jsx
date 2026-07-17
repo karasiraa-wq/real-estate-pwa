@@ -264,7 +264,7 @@ describe('payments tab', () => {
     expect(JSON.parse(call[1].body)).toEqual({
       phone: '0700111222',
       momo_tx_id: 'MTN999',
-      category: 'rental',
+      product: 'standard_rental',
     })
   })
 

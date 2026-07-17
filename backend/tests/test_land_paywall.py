@@ -41,7 +41,8 @@ def approved_land(client) -> int:
 
 
 def approved_rental(client) -> int:
-    listing_id = submit(client)
+    # Standard tier: cross-category isolation is about credit bundles.
+    listing_id = submit(client, rent_ugx=250_000)
     approve(client, listing_id)
     return listing_id
 

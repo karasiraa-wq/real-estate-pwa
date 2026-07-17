@@ -51,3 +51,8 @@ export function clearTenant() {
 export function announceCredits(credits, category = 'rental') {
   window.dispatchEvent(new CustomEvent('rentug:credits', { detail: { credits, category } }))
 }
+
+// Same, for the Premium Day Pass counter (null = no live pass).
+export function announcePassReveals(remaining) {
+  window.dispatchEvent(new CustomEvent('rentug:pass', { detail: { remaining } }))
+}

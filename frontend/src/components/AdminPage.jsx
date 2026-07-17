@@ -423,19 +423,26 @@ function ClaimCard({ claim, token, onDone, onAuthExpired }) {
     }
   }
 
+  const PRODUCT_LABELS = {
+    standard_rental: 'rental credit bundle',
+    premium_pass: 'Premium Day Pass (until midnight on approval day)',
+    land: 'land credit bundle',
+  }
   return (
     <article className="card review-card claim-card" aria-label={`Claim ${claim.momo_tx_id}`}>
       <div className="review-head">
         <h3>
-          {claim.category === 'land' && (
+          {claim.product === 'land' && (
             <span className="category-badge category-badge-land">Land</span>
+          )}
+          {claim.product === 'premium_pass' && (
+            <span className="category-badge category-badge-premium">Premium pass</span>
           )}{' '}
           {claim.tenant_phone}
         </h3>
         <p className="review-meta">
           Transaction <strong>{claim.momo_tx_id}</strong> ·{' '}
-          {claim.category === 'land' ? 'land credit bundle' : 'rental credit bundle'} · submitted{' '}
-          {submitted}
+          {PRODUCT_LABELS[claim.product] || 'rental credit bundle'} · submitted {submitted}
         </p>
       </div>
       {error && (
@@ -455,7 +462,7 @@ function ClaimCard({ claim, token, onDone, onAuthExpired }) {
 function ManualGrantForm({ token, onAuthExpired }) {
   const [phone, setPhone] = useState('')
   const [txId, setTxId] = useState('')
-  const [category, setCategory] = useState('rental')
+  const [product, setProduct] = useState('standard_rental')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -478,10 +485,12 @@ function ManualGrantForm({ token, onAuthExpired }) {
       const grant = await grantCredits(token, {
         phone: cleanPhone,
         momo_tx_id: txId.trim(),
-        category,
+        product,
       })
       setSuccess(
-        `Granted ${grant.credits} ${grant.category === 'land' ? 'land ' : ''}reveals to ${grant.tenant_phone}`
+        grant.product === 'premium_pass'
+          ? `Granted a Premium Day Pass to ${grant.tenant_phone} — valid until midnight today`
+          : `Granted ${grant.credits} ${grant.category === 'land' ? 'land ' : ''}reveals to ${grant.tenant_phone}`
       )
       setPhone('')
       setTxId('')
@@ -520,13 +529,14 @@ function ManualGrantForm({ token, onAuthExpired }) {
         />
       </div>
       <div className="field">
-        <label htmlFor="grant_category">Credit type</label>
+        <label htmlFor="grant_product">What they paid for</label>
         <select
-          id="grant_category"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
+          id="grant_product"
+          value={product}
+          onChange={(e) => setProduct(e.target.value)}
         >
-          <option value="rental">Rental reveals (default bundle)</option>
+          <option value="standard_rental">Rental reveals (default bundle)</option>
+          <option value="premium_pass">Premium Day Pass (until midnight today)</option>
           <option value="land">Land reveals (default bundle)</option>
         </select>
       </div>

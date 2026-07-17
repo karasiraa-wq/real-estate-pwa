@@ -157,11 +157,11 @@ export function revealContact(token, listingId) {
 }
 
 /** Submit a MoMo transaction ID for manual verification by the owner.
- * category says which credit bundle was paid for (rental | land). */
-export function submitPaymentClaim(token, momoTxId, category = 'rental') {
+ * product says what was paid for (standard_rental | premium_pass | land). */
+export function submitPaymentClaim(token, momoTxId, product = 'standard_rental') {
   return tenantRequest('/api/tenants/payment-claims', token, {
     method: 'POST',
-    body: JSON.stringify({ momo_tx_id: momoTxId, category }),
+    body: JSON.stringify({ momo_tx_id: momoTxId, product }),
   })
 }
 
@@ -208,15 +208,16 @@ export function approvePaymentClaim(token, claimId) {
   return adminRequest(`/payment-claims/${claimId}/approve`, token, { method: 'POST' })
 }
 
-/** Manual grant for tenants who paid without submitting a claim. */
-export function grantCredits(token, { phone, momo_tx_id, credits, category }) {
+/** Manual grant for tenants who paid without submitting a claim.
+ * product picks what to grant: standard_rental | premium_pass | land. */
+export function grantCredits(token, { phone, momo_tx_id, credits, product }) {
   return adminRequest('/credit-grants', token, {
     method: 'POST',
     body: JSON.stringify({
       phone,
       momo_tx_id,
       ...(credits ? { credits } : {}),
-      ...(category ? { category } : {}),
+      ...(product ? { product } : {}),
     }),
   })
 }

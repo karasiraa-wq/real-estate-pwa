@@ -52,5 +52,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/test/setup.js',
+    // The big userEvent-driven form tests routinely blow the 5s default on
+    // the shared dev VM; they are slow, not broken.
+    testTimeout: 20000,
   },
 })

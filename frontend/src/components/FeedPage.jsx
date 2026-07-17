@@ -198,6 +198,8 @@ function ListingCard({ listing, navigate }) {
             <>
               <p className="feed-rent">
                 {formatUGX(listing.rent_ugx)} <span>/month</span>
+                {/* tier only arrives from the API once the paywall is live */}
+                {listing.tier === 'premium' && <span className="premium-badge">Premium</span>}
               </p>
               <h3 className="feed-title">{listing.title}</h3>
               <p className="feed-location">

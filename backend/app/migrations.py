@@ -24,8 +24,24 @@ _ADDED_COLUMNS: dict[str, dict[str, str]] = {
         "longitude": "FLOAT",
     },
     "credit_grants": {"category": "VARCHAR(16) NOT NULL DEFAULT 'rental'"},
-    "reveals": {"category": "VARCHAR(16) NOT NULL DEFAULT 'rental'"},
-    "payment_claims": {"category": "VARCHAR(16) NOT NULL DEFAULT 'rental'"},
+    "reveals": {
+        "category": "VARCHAR(16) NOT NULL DEFAULT 'rental'",
+        "premium_pass_id": "INTEGER REFERENCES premium_passes (id)",
+    },
+    "payment_claims": {
+        "category": "VARCHAR(16) NOT NULL DEFAULT 'rental'",
+        "product": "VARCHAR(16) NOT NULL DEFAULT 'standard_rental'",
+    },
+}
+
+# One-time backfills, keyed by the just-added column that triggers them: the
+# rental default is right for old rental claims, but old land claims must
+# become the land product. Runs only in the same transaction that adds the
+# column, so it can never touch rows written by the new code.
+_BACKFILLS: dict[tuple[str, str], str] = {
+    ("payment_claims", "product"): (
+        "UPDATE payment_claims SET product = 'land' WHERE category = 'land'"
+    ),
 }
 
 
@@ -70,6 +86,9 @@ def upgrade_schema(engine: Engine) -> None:
             for name, ddl in columns.items():
                 if name not in present:
                     conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
+                    backfill = _BACKFILLS.get((table, name))
+                    if backfill:
+                        conn.exec_driver_sql(backfill)
         if "listings" in existing_tables:
             rent_not_null = any(
                 row[1] == "rent_ugx" and row[3] for row in _table_info(conn, "listings")

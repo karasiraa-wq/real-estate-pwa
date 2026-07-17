@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { registerTenant, revealContact, submitPaymentClaim } from '../api.js'
 import {
   announceCredits,
+  announcePassReveals,
   clearTenant,
   getTenantToken,
   saveTenant,
@@ -33,6 +34,7 @@ export default function RevealContact({ listing, onRevealed }) {
       const res = await revealContact(token, listing.id)
       setWhatsappPhone(res.whatsapp_phone)
       announceCredits(res.credits_remaining, listing.category)
+      announcePassReveals(res.pass_reveals_remaining ?? null)
       // Hands the exact coordinates (paid content for rentals) to the page.
       onRevealed?.(res)
       setStep('revealed')
@@ -86,9 +88,10 @@ export default function RevealContact({ listing, onRevealed }) {
     setBusy(true)
     setError('')
     try {
-      // The claim carries the category from the 402 payload, so the admin
-      // grants the right bundle (rental vs land credits).
-      await submitPaymentClaim(getTenantToken(), clean, payInfo?.category ?? listing.category)
+      // The claim carries the product from the 402 payload, so the admin
+      // grants the right thing (standard bundle vs day pass vs land credits).
+      const fallback = listing.category === 'land' ? 'land' : 'standard_rental'
+      await submitPaymentClaim(getTenantToken(), clean, payInfo?.product ?? fallback)
       setStep('pending')
     } catch (err) {
       // 409 = this transaction ID was already submitted; same outcome for the user.
@@ -145,15 +148,41 @@ export default function RevealContact({ listing, onRevealed }) {
   }
 
   if (step === 'pay' && payInfo) {
-    // Price and bundle come from the 402 payload, so this screen always shows
-    // the listing's own category pricing (rental 5,000/20 vs land 50,000/3).
+    // Price and product come from the 402 payload, so this screen always
+    // sells what THIS listing needs: standard bundle (5,000/20), Premium Day
+    // Pass (20,000, capped — never "unlimited"), or land bundle (50,000/3).
     const payLand = payInfo.category === 'land'
+    const payPass = payInfo.product === 'premium_pass'
     return (
       <div className="card reveal-panel">
-        <h3>{payLand ? 'Buy land contact reveals' : 'Buy contact reveals'}</h3>
+        <h3>
+          {payPass
+            ? 'Get a Premium Day Pass'
+            : payLand
+              ? 'Buy land contact reveals'
+              : 'Buy contact reveals'}
+        </h3>
+        {payPass && payInfo.pass_status === 'expired' && (
+          <p className="pass-status-note">Your last day pass expired at midnight.</p>
+        )}
+        {payPass && payInfo.pass_status === 'exhausted' && (
+          <p className="pass-status-note">
+            Your day pass has used all {payInfo.pass_max_reveals} contacts for today.
+          </p>
+        )}
         <p className="reveal-hint">
-          {payInfo.credits_per_purchase} {payLand ? 'land seller contact reveals' : 'contact reveals'}{' '}
-          for {formatUGX(payInfo.price_ugx)}.
+          {payPass ? (
+            <>
+              Access ALL rental listings until midnight today · up to{' '}
+              {payInfo.pass_max_reveals} contacts, for {formatUGX(payInfo.price_ugx)}.
+            </>
+          ) : (
+            <>
+              {payInfo.credits_per_purchase}{' '}
+              {payLand ? 'land seller contact reveals' : 'contact reveals'} for{' '}
+              {formatUGX(payInfo.price_ugx)}.
+            </>
+          )}
         </p>
         <div className="momo-box">
           <p className="momo-number">{payInfo.momo_number}</p>

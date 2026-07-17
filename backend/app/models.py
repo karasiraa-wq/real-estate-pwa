@@ -1,7 +1,8 @@
 import enum
 import hashlib
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -18,8 +19,35 @@ class ListingCategory(str, enum.Enum):
     LAND = "land"
 
 
+class PaymentProduct(str, enum.Enum):
+    """What a payment buys: a standard rental credit bundle, a Premium Day
+    Pass (rentals above the tier threshold), or a land credit bundle."""
+
+    STANDARD_RENTAL = "standard_rental"
+    PREMIUM_PASS = "premium_pass"
+    LAND = "land"
+
+
+KAMPALA = ZoneInfo("Africa/Kampala")
+
+
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def as_utc(dt: datetime) -> datetime:
+    """SQLite drops tzinfo on storage; datetimes we wrote are UTC wall time,
+    so re-attach UTC when they come back naive."""
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
+def next_kampala_midnight(now: datetime) -> datetime:
+    """A Premium Day Pass is a calendar-day product for Ugandan users: it
+    expires at the midnight AFTER `now` in Africa/Kampala (EAT, UTC+3), not
+    midnight UTC. Returned as an aware UTC datetime."""
+    local = as_utc(now).astimezone(KAMPALA)
+    midnight = (local + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return midnight.astimezone(timezone.utc)
 
 
 class Base(DeclarativeBase):
@@ -157,7 +185,30 @@ class Reveal(Base):
     category: Mapped[str] = mapped_column(
         String(16), default=ListingCategory.RENTAL.value, server_default="rental"
     )
+    # Set when a Premium Day Pass covered this reveal (charged stays False:
+    # pass usage is metered on the pass itself, never against credit bundles).
+    premium_pass_id: Mapped[int | None] = mapped_column(ForeignKey("premium_passes.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PremiumPass(Base):
+    """A Premium Day Pass: unlocks ALL rental listings (both tiers, never
+    land) from admin approval until midnight Africa/Kampala of that same day,
+    capped at settings.premium_pass_max_reveals reveals. expires_at is
+    computed at grant time; validity checks and the reveals_used increment
+    are done atomically in SQL against these columns."""
+
+    __tablename__ = "premium_passes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reveals_used: Mapped[int] = mapped_column(default=0)
+    source: Mapped[str] = mapped_column(String(16))  # "claim" | "manual"
+    # Unique here AND cross-checked against credit_grants: one MoMo payment
+    # can never buy both a pass and a credit bundle.
+    momo_tx_id: Mapped[str] = mapped_column(String(64), unique=True)
 
 
 class PaymentClaim(Base):
@@ -170,8 +221,15 @@ class PaymentClaim(Base):
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
     momo_tx_id: Mapped[str] = mapped_column(String(64), unique=True)
     # Which credit bundle the tenant paid for; approval grants that category.
+    # Kept alongside product for pre-tiering clients that only send category.
     category: Mapped[str] = mapped_column(
         String(16), default=ListingCategory.RENTAL.value, server_default="rental"
+    )
+    # What approval delivers: standard_rental | premium_pass | land.
+    product: Mapped[str] = mapped_column(
+        String(16),
+        default=PaymentProduct.STANDARD_RENTAL.value,
+        server_default="standard_rental",
     )
     status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

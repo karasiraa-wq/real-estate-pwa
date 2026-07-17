@@ -23,6 +23,12 @@ class Settings:
     # rentals, behind the same PAYWALL_ENABLED flag.
     land_price_ugx: int = 50_000
     land_credits_per_purchase: int = 3
+    # Rental tiering: listings renting above the threshold are "premium" and
+    # can only be revealed with a Premium Day Pass (valid until midnight
+    # Africa/Kampala on the day it is granted, capped at max_reveals).
+    rent_tier_threshold_ugx: int = 300_000
+    premium_pass_price_ugx: int = 20_000
+    premium_pass_max_reveals: int = 30
     momo_number: str = ""
     momo_name: str = ""
     # Per-IP cap on tenant registration + payment-claim submissions.
@@ -46,6 +52,15 @@ class Settings:
             land_price_ugx=int(os.environ.get("LAND_PRICE_UGX", str(cls.land_price_ugx))),
             land_credits_per_purchase=int(
                 os.environ.get("LAND_CREDITS_PER_PURCHASE", str(cls.land_credits_per_purchase))
+            ),
+            rent_tier_threshold_ugx=int(
+                os.environ.get("RENT_TIER_THRESHOLD_UGX", str(cls.rent_tier_threshold_ugx))
+            ),
+            premium_pass_price_ugx=int(
+                os.environ.get("PREMIUM_PASS_PRICE_UGX", str(cls.premium_pass_price_ugx))
+            ),
+            premium_pass_max_reveals=int(
+                os.environ.get("PREMIUM_PASS_MAX_REVEALS", str(cls.premium_pass_max_reveals))
             ),
             momo_number=os.environ.get("MOMO_NUMBER", ""),
             momo_name=os.environ.get("MOMO_NAME", ""),

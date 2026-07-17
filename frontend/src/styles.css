@@ -1303,3 +1303,41 @@ body {
   gap: 10px;
   margin-top: 10px;
 }
+
+/* Tiered rental pricing: premium badge + day-pass UI */
+
+.premium-badge {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 8px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f4edfb;
+  color: #5b3a8c;
+  border: 1px solid #a582d1;
+}
+
+.category-badge-premium {
+  background: #f4edfb;
+  color: #5b3a8c;
+  border-color: #a582d1;
+}
+
+.pass-chip {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 0 8px 0 0;
+  border-right: 1px solid var(--green);
+  color: #5b3a8c;
+}
+
+.pass-status-note {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #8a5a1f;
+}

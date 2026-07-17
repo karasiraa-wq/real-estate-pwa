@@ -107,6 +107,8 @@ export default function ListingDetail({ id, navigate }) {
         ) : (
           <p className="feed-rent detail-rent">
             {formatUGX(listing.rent_ugx)} <span>/month</span>
+            {/* tier only arrives from the API once the paywall is live */}
+            {listing.tier === 'premium' && <span className="premium-badge">Premium</span>}
           </p>
         )}
         <h2 className="detail-title">{listing.title}</h2>

@@ -48,7 +48,9 @@ def grant(client, phone, tx_id, credits=None):
 
 
 def approved_listing(client) -> int:
-    listing_id = submit(client)
+    # Standard tier (rent at/below the 300k threshold): these tests cover the
+    # credit-bundle flow; the premium day-pass tier has its own suite.
+    listing_id = submit(client, rent_ugx=250_000)
     approve(client, listing_id)
     return listing_id
 
@@ -115,6 +117,9 @@ def test_flag_off_contact_succeeds_with_zero_credits(client):
         "land_credits_remaining": 0,
         "reveals_count": 1,
         "paywall_enabled": False,
+        "premium_pass_status": "none",
+        "premium_pass_expires_at": None,
+        "premium_pass_reveals_remaining": None,
     }
 
 
@@ -161,6 +166,7 @@ def test_flag_on_grant_reveal_decrement_and_free_rereveal(client_on):
         "latitude": None,
         "longitude": None,
         "credits_remaining": 19,
+        "pass_reveals_remaining": None,
     }
 
     # Re-revealing the same listing is free.

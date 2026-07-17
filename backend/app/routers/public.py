@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Requ
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from ..deps import get_db, limit_photo_uploads, limit_submissions
+from ..deps import get_db, limit_photo_uploads, limit_submissions, rental_tier
 from ..models import Listing, ListingCategory, ListingStatus, Photo
 from ..schemas import (
     ListingSubmission,
@@ -103,8 +103,20 @@ async def upload_photo(
     )
 
 
+def _with_tier(listing: Listing, schema: type, request: Request):
+    """Serialize a public listing, stamping the rental access tier only while
+    the paywall is live: the dark-launch responses stay byte-identical to
+    today, and land never has a tier."""
+    card = schema.model_validate(listing)
+    settings = request.app.state.settings
+    if settings.paywall_enabled and listing.category == ListingCategory.RENTAL.value:
+        card.tier = rental_tier(listing, settings)
+    return card
+
+
 @router.get("", response_model=list[PublicListingCard])
 def list_approved(
+    request: Request,
     q: str | None = Query(default=None, max_length=120, description="Location or title text"),
     category: ListingCategory = Query(default=ListingCategory.RENTAL),
     property_type: PropertyType | None = None,
@@ -140,11 +152,11 @@ def list_approved(
         .limit(limit)
         .offset(offset)
     )
-    return list(rows)
+    return [_with_tier(listing, PublicListingCard, request) for listing in rows]
 
 
 @router.get("/{listing_id}", response_model=PublicListingDetail)
-def get_approved(listing_id: int, db: Session = Depends(get_db)):
+def get_approved(listing_id: int, request: Request, db: Session = Depends(get_db)):
     listing = db.scalar(
         select(Listing).where(Listing.id == listing_id, Listing.status == APPROVED)
     )
@@ -152,4 +164,4 @@ def get_approved(listing_id: int, db: Session = Depends(get_db)):
         # Non-approved listings 404 identically to nonexistent ones: their
         # existence is never acknowledged publicly.
         raise HTTPException(status_code=404, detail="Listing not found")
-    return listing
+    return _with_tier(listing, PublicListingDetail, request)

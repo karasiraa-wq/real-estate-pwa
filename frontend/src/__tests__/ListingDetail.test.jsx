@@ -144,6 +144,9 @@ describe('listing detail', () => {
         status: 402,
         body: {
           detail: {
+            category: 'rental',
+            tier: 'standard',
+            product: 'standard_rental',
             credits_remaining: 0,
             price_ugx: 5000,
             credits_per_purchase: 20,
@@ -151,6 +154,7 @@ describe('listing detail', () => {
             momo_name: 'Andrew K',
             payment_instructions: 'Send UGX 5,000 by Mobile Money to 0779999999 (Andrew K).',
             pending_claim: false,
+            pass_status: 'none',
           },
         },
       },
@@ -179,7 +183,7 @@ describe('listing detail', () => {
     const claimCall = fetch.mock.calls.find(([url]) => url === '/api/tenants/payment-claims')
     expect(JSON.parse(claimCall[1].body)).toEqual({
       momo_tx_id: '74211539062',
-      category: 'rental',
+      product: 'standard_rental',
     })
     expect(claimCall[1].headers.Authorization).toBe('Bearer tok-2')
   })

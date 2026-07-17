@@ -6,7 +6,14 @@ from collections import defaultdict, deque
 from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy import select
 
-from .models import Tenant
+from .config import Settings
+from .models import Listing, Tenant
+
+
+def rental_tier(listing: Listing, settings: Settings) -> str:
+    """Access tier for a RENTAL listing (never call for land). At or below
+    the rent threshold is standard; strictly above is premium (day-pass only)."""
+    return "premium" if listing.rent_ugx > settings.rent_tier_threshold_ugx else "standard"
 
 
 def get_db(request: Request):
