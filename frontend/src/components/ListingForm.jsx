@@ -4,19 +4,28 @@ import { compressImage } from '../lib/compressImage.js'
 import {
   MAX_PHOTOS,
   PROPERTY_TYPES,
+  TENURES,
+  TITLE_STATUSES,
   formatUGX,
   validateListing,
 } from '../lib/validation.js'
 import Confirmation from './Confirmation.jsx'
+import MapPicker from './MapPicker.jsx'
 import PhotoPicker from './PhotoPicker.jsx'
 
 const EMPTY = {
+  category: 'rental',
   title: '',
   property_type: '',
   district: '',
   area: '',
   landmark: '',
   rent_ugx: '',
+  plot_size: '',
+  tenure: '',
+  title_status: '',
+  asking_price_ugx: '',
+  video_url: '',
   description: '',
   landlord_name: '',
   whatsapp_phone: '',
@@ -26,12 +35,15 @@ export default function ListingForm() {
   const [values, setValues] = useState(EMPTY)
   const [errors, setErrors] = useState({})
   const [photos, setPhotos] = useState([])
+  const [pin, setPin] = useState(null) // { latitude, longitude } | null
   const [preparingPhotos, setPreparingPhotos] = useState(false)
   const [phase, setPhase] = useState('editing') // editing | submitting | done
   const [progress, setProgress] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [result, setResult] = useState(null)
   const nextPhotoId = useRef(1)
+
+  const isLand = values.category === 'land'
 
   function setValue(name, value) {
     setValues((v) => ({ ...v, [name]: value }))
@@ -86,17 +98,34 @@ export default function ListingForm() {
     setPhase('submitting')
     setProgress('Submitting your listing…')
     try {
-      const submission = await submitListing({
+      const common = {
+        category: values.category,
         title: values.title.trim(),
-        property_type: values.property_type,
         district: values.district.trim(),
         area: values.area.trim(),
         landmark: values.landmark.trim() || null,
-        rent_ugx: Number(String(values.rent_ugx).replace(/[,\s]/g, '')),
+        video_url: values.video_url.trim() || null,
+        latitude: pin ? pin.latitude : null,
+        longitude: pin ? pin.longitude : null,
         description: values.description.trim(),
         landlord_name: values.landlord_name.trim(),
         whatsapp_phone: values.whatsapp_phone.replace(/[\s-]/g, ''),
-      })
+      }
+      const submission = await submitListing(
+        isLand
+          ? {
+              ...common,
+              plot_size: values.plot_size.trim(),
+              tenure: values.tenure,
+              title_status: values.title_status,
+              asking_price_ugx: Number(String(values.asking_price_ugx).replace(/[,\s]/g, '')),
+            }
+          : {
+              ...common,
+              property_type: values.property_type,
+              rent_ugx: Number(String(values.rent_ugx).replace(/[,\s]/g, '')),
+            }
+      )
 
       let failedPhotos = 0
       for (let i = 0; i < photos.length; i++) {
@@ -129,6 +158,7 @@ export default function ListingForm() {
     setValues(EMPTY)
     setErrors({})
     setPhotos([])
+    setPin(null)
     setResult(null)
     setSubmitError('')
     setPhase('editing')
@@ -138,40 +168,125 @@ export default function ListingForm() {
 
   const submitting = phase === 'submitting'
   const rentPreview = formatUGX(values.rent_ugx)
+  const pricePreview = formatUGX(values.asking_price_ugx)
 
   return (
-    <form className="card listing-form" onSubmit={handleSubmit} noValidate>
-      <h2>List your property</h2>
+    <form
+      className={isLand ? 'card listing-form land-theme' : 'card listing-form'}
+      onSubmit={handleSubmit}
+      noValidate
+    >
+      <h2>{isLand ? 'List your land' : 'List your property'}</h2>
       <p className="form-intro">
         Free to list. We verify every listing before tenants see it — usually within
         24 hours.
       </p>
+
+      <fieldset className="field category-choice">
+        <legend>What are you listing?</legend>
+        <div className="category-options">
+          <label className={!isLand ? 'category-option selected' : 'category-option'}>
+            <input
+              type="radio"
+              name="category"
+              value="rental"
+              checked={!isLand}
+              onChange={() => setValue('category', 'rental')}
+            />
+            🏠 Rental
+          </label>
+          <label className={isLand ? 'category-option selected' : 'category-option'}>
+            <input
+              type="radio"
+              name="category"
+              value="land"
+              checked={isLand}
+              onChange={() => setValue('category', 'land')}
+            />
+            🌍 Land
+          </label>
+        </div>
+      </fieldset>
 
       <Field label="Listing title" name="title" error={errors.title}>
         <input
           id="title"
           type="text"
           maxLength={120}
-          placeholder="e.g. Self-contained room in Kansanga"
+          placeholder={
+            isLand ? 'e.g. 50x100 titled plot in Gayaza' : 'e.g. Self-contained room in Kansanga'
+          }
           value={values.title}
           onChange={(e) => setValue('title', e.target.value)}
         />
       </Field>
 
-      <Field label="Property type" name="property_type" error={errors.property_type}>
-        <select
-          id="property_type"
-          value={values.property_type}
-          onChange={(e) => setValue('property_type', e.target.value)}
-        >
-          <option value="">Select type…</option>
-          {PROPERTY_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {!isLand && (
+        <Field label="Property type" name="property_type" error={errors.property_type}>
+          <select
+            id="property_type"
+            value={values.property_type}
+            onChange={(e) => setValue('property_type', e.target.value)}
+          >
+            <option value="">Select type…</option>
+            {PROPERTY_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+
+      {isLand && (
+        <>
+          <div className="field-row">
+            <Field label="Plot size" name="plot_size" error={errors.plot_size}>
+              <input
+                id="plot_size"
+                type="text"
+                maxLength={40}
+                placeholder="e.g. 50x100"
+                value={values.plot_size}
+                onChange={(e) => setValue('plot_size', e.target.value)}
+              />
+            </Field>
+            <Field label="Tenure" name="tenure" error={errors.tenure}>
+              <select
+                id="tenure"
+                value={values.tenure}
+                onChange={(e) => setValue('tenure', e.target.value)}
+              >
+                <option value="">Select tenure…</option>
+                {TENURES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <Field
+            label="Title status"
+            name="title_status"
+            error={errors.title_status}
+            hint="Buyers will see this as stated by you, the seller."
+          >
+            <select
+              id="title_status"
+              value={values.title_status}
+              onChange={(e) => setValue('title_status', e.target.value)}
+            >
+              <option value="">Select title status…</option>
+              {TITLE_STATUSES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </>
+      )}
 
       <div className="field-row">
         <Field label="District" name="district" error={errors.district}>
@@ -204,28 +319,50 @@ export default function ListingForm() {
         />
       </Field>
 
-      <Field
-        label="Monthly rent (UGX)"
-        name="rent_ugx"
-        error={errors.rent_ugx}
-        hint={rentPreview ? `${rentPreview} per month` : null}
-      >
-        <input
-          id="rent_ugx"
-          type="text"
-          inputMode="numeric"
-          placeholder="e.g. 450000"
-          value={values.rent_ugx}
-          onChange={(e) => setValue('rent_ugx', e.target.value)}
-        />
-      </Field>
+      {isLand ? (
+        <Field
+          label="Asking price (UGX)"
+          name="asking_price_ugx"
+          error={errors.asking_price_ugx}
+          hint={pricePreview ? `${pricePreview} asking price` : null}
+        >
+          <input
+            id="asking_price_ugx"
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. 35000000"
+            value={values.asking_price_ugx}
+            onChange={(e) => setValue('asking_price_ugx', e.target.value)}
+          />
+        </Field>
+      ) : (
+        <Field
+          label="Monthly rent (UGX)"
+          name="rent_ugx"
+          error={errors.rent_ugx}
+          hint={rentPreview ? `${rentPreview} per month` : null}
+        >
+          <input
+            id="rent_ugx"
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. 450000"
+            value={values.rent_ugx}
+            onChange={(e) => setValue('rent_ugx', e.target.value)}
+          />
+        </Field>
+      )}
 
       <Field label="Description" name="description" error={errors.description}>
         <textarea
           id="description"
           rows={4}
           maxLength={5000}
-          placeholder="Describe the property: rooms, water, power, access road…"
+          placeholder={
+            isLand
+              ? 'Describe the plot: access road, neighborhood, utilities, boundaries…'
+              : 'Describe the property: rooms, water, power, access road…'
+          }
           value={values.description}
           onChange={(e) => setValue('description', e.target.value)}
         />
@@ -239,8 +376,31 @@ export default function ListingForm() {
         onRemove={removePhoto}
       />
 
+      <Field
+        label="Video link (YouTube, optional)"
+        name="video_url"
+        error={errors.video_url}
+        hint="Upload your video to YouTube and paste the link here"
+      >
+        <input
+          id="video_url"
+          type="url"
+          inputMode="url"
+          autoComplete="off"
+          placeholder="https://youtu.be/…"
+          value={values.video_url}
+          onChange={(e) => setValue('video_url', e.target.value)}
+        />
+      </Field>
+
+      <MapPicker value={pin} onChange={setPin} error={errors.latitude || errors.longitude} />
+
       <h3 className="section-heading">Your contact details</h3>
-      <p className="form-intro">Tenants will contact you directly on WhatsApp.</p>
+      <p className="form-intro">
+        {isLand
+          ? 'Buyers will contact you directly on WhatsApp.'
+          : 'Tenants will contact you directly on WhatsApp.'}
+      </p>
 
       <Field label="Your name" name="landlord_name" error={errors.landlord_name}>
         <input

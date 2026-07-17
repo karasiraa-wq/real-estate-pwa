@@ -1,8 +1,12 @@
+import hashlib
 import secrets
 import time
 from collections import defaultdict, deque
 
-from fastapi import Header, HTTPException, Request
+from fastapi import Depends, Header, HTTPException, Request
+from sqlalchemy import select
+
+from .models import Tenant
 
 
 def get_db(request: Request):
@@ -22,6 +26,34 @@ def require_admin(request: Request, x_admin_token: str | None = Header(default=N
         x_admin_token.encode(), configured.encode()
     ):
         raise HTTPException(status_code=401, detail="Invalid admin credentials")
+
+
+def hash_token(token: str) -> str:
+    # Tokens are 32 bytes of urandom, so an unsalted SHA-256 is enough: it
+    # cannot be brute-forced and lets us look the tenant up by hash directly.
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def require_tenant(
+    authorization: str | None = Header(default=None),
+    db=Depends(get_db),
+) -> Tenant:
+    """Bearer-token tenant gate for the paywall endpoints. The WhatsApp
+    contact must only ever be served behind this dependency."""
+    unauthorized = HTTPException(
+        status_code=401,
+        detail="Sign in with your phone number to continue",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    if not authorization or not authorization.startswith("Bearer "):
+        raise unauthorized
+    token = authorization.removeprefix("Bearer ").strip()
+    if not token:
+        raise unauthorized
+    tenant = db.scalar(select(Tenant).where(Tenant.token_hash == hash_token(token)))
+    if tenant is None:
+        raise unauthorized
+    return tenant
 
 
 class SlidingWindowLimiter:
@@ -59,4 +91,13 @@ def limit_photo_uploads(request: Request):
         raise HTTPException(
             status_code=429,
             detail="Too many photo uploads. Please try again later.",
+        )
+
+
+def limit_tenant_ops(request: Request):
+    ip = request.client.host if request.client else "unknown"
+    if not request.app.state.tenant_limiter.allow(ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many requests from this device. Please try again later.",
         )

@@ -13,6 +13,20 @@ class Settings:
     # Photos are compressed client-side to ~150KB; 2MB leaves headroom without
     # letting a hostile client fill the disk quickly.
     max_photo_bytes: int = 2_000_000
+    # Tenant paywall. Ships dark: with the flag off the contact endpoint grants
+    # reveals without charging credits, but the WhatsApp number still never
+    # appears in public list/detail responses.
+    paywall_enabled: bool = False
+    price_ugx: int = 5000
+    credits_per_purchase: int = 20
+    # Land is premium: its reveals are priced and bundled separately from
+    # rentals, behind the same PAYWALL_ENABLED flag.
+    land_price_ugx: int = 50_000
+    land_credits_per_purchase: int = 3
+    momo_number: str = ""
+    momo_name: str = ""
+    # Per-IP cap on tenant registration + payment-claim submissions.
+    rate_limit_tenant_ops: int = 30
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -23,4 +37,19 @@ class Settings:
             rate_limit_window_seconds=int(os.environ.get("RATE_LIMIT_WINDOW_SECONDS", "3600")),
             upload_dir=os.environ.get("UPLOAD_DIR", cls.upload_dir),
             max_photo_bytes=int(os.environ.get("MAX_PHOTO_BYTES", str(cls.max_photo_bytes))),
+            paywall_enabled=os.environ.get("PAYWALL_ENABLED", "false").strip().lower()
+            in ("1", "true", "yes", "on"),
+            price_ugx=int(os.environ.get("PRICE_UGX", str(cls.price_ugx))),
+            credits_per_purchase=int(
+                os.environ.get("CREDITS_PER_PURCHASE", str(cls.credits_per_purchase))
+            ),
+            land_price_ugx=int(os.environ.get("LAND_PRICE_UGX", str(cls.land_price_ugx))),
+            land_credits_per_purchase=int(
+                os.environ.get("LAND_CREDITS_PER_PURCHASE", str(cls.land_credits_per_purchase))
+            ),
+            momo_number=os.environ.get("MOMO_NUMBER", ""),
+            momo_name=os.environ.get("MOMO_NAME", ""),
+            rate_limit_tenant_ops=int(
+                os.environ.get("RATE_LIMIT_TENANT_OPS", str(cls.rate_limit_tenant_ops))
+            ),
         )

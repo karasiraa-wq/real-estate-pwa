@@ -187,3 +187,98 @@ describe('review queue', () => {
     expect(sessionStorage.getItem('rentug_admin_token')).toBeNull()
   })
 })
+
+describe('payments tab', () => {
+  const CLAIMS = [
+    {
+      id: 1,
+      momo_tx_id: 'MTN123',
+      tenant_phone: '+256700111222',
+      status: 'pending',
+      created_at: '2026-07-12T10:00:00Z',
+    },
+  ]
+
+  async function openPayments(user, claims = CLAIMS) {
+    await signIn(user)
+    fetch.mockResolvedValueOnce(jsonResponse(claims))
+    await user.click(screen.getByRole('button', { name: 'Payments' }))
+    await screen.findByRole('heading', { name: /pending payments/i })
+  }
+
+  it('lists pending claims and approves one, granting credits', async () => {
+    const user = userEvent.setup()
+    await openPayments(user)
+
+    const card = screen.getByRole('article', { name: /claim mtn123/i })
+    expect(within(card).getByText('+256700111222')).toBeInTheDocument()
+    expect(within(card).getByText('MTN123')).toBeInTheDocument()
+
+    fetch.mockResolvedValueOnce(
+      jsonResponse({
+        id: 1,
+        tenant_phone: '+256700111222',
+        credits: 20,
+        momo_tx_id: 'MTN123',
+        source: 'claim',
+      }),
+    )
+    await user.click(within(card).getByRole('button', { name: /approve/i }))
+
+    await waitFor(() =>
+      expect(screen.queryByRole('article', { name: /claim mtn123/i })).not.toBeInTheDocument(),
+    )
+    const call = fetch.mock.calls.at(-1)
+    expect(call[0]).toBe('/api/admin/payment-claims/1/approve')
+    expect(call[1].method).toBe('POST')
+    expect(call[1].headers['X-Admin-Token']).toBe('secret-token')
+  })
+
+  it('grants credits manually by phone number and transaction ID', async () => {
+    const user = userEvent.setup()
+    await openPayments(user, [])
+    expect(screen.getByText(/no pending payment claims/i)).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/tenant phone number/i), '0700111222')
+    await user.type(screen.getByLabelText(/momo transaction id/i), 'MTN999')
+    fetch.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          id: 2,
+          tenant_phone: '+256700111222',
+          credits: 20,
+          category: 'rental',
+          momo_tx_id: 'MTN999',
+          source: 'manual',
+        },
+        201,
+      ),
+    )
+    await user.click(screen.getByRole('button', { name: /grant reveals/i }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /granted 20 reveals to \+256700111222/i,
+    )
+    const call = fetch.mock.calls.at(-1)
+    expect(call[0]).toBe('/api/admin/credit-grants')
+    expect(JSON.parse(call[1].body)).toEqual({
+      phone: '0700111222',
+      momo_tx_id: 'MTN999',
+      category: 'rental',
+    })
+  })
+
+  it('rejects a duplicate transaction ID with the server message', async () => {
+    const user = userEvent.setup()
+    await openPayments(user, [])
+
+    await user.type(screen.getByLabelText(/tenant phone number/i), '0700111222')
+    await user.type(screen.getByLabelText(/momo transaction id/i), 'MTN123')
+    fetch.mockResolvedValueOnce(
+      jsonResponse({ detail: 'This transaction ID has already been used for a grant' }, 409),
+    )
+    await user.click(screen.getByRole('button', { name: /grant reveals/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/already been used/i)
+  })
+})

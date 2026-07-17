@@ -19,6 +19,21 @@ VALID_LISTING = {
     "whatsapp_phone": "0771234567",
 }
 
+VALID_LAND = {
+    "category": "land",
+    "title": "50x100 titled plot in Gayaza",
+    "district": "Wakiso",
+    "area": "Gayaza",
+    "landmark": "Off Gayaza-Zirobwe road",
+    "plot_size": "50x100",
+    "tenure": "mailo",
+    "title_status": "has_title",
+    "asking_price_ugx": 35_000_000,
+    "description": "Quarter-acre plot with a private mailo title, ready to transfer.",
+    "landlord_name": "Andrew K",
+    "whatsapp_phone": "0772345678",
+}
+
 
 def make_settings(tmp_path, **overrides) -> Settings:
     defaults = dict(

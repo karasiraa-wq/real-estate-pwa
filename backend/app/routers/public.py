@@ -7,7 +7,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from ..deps import get_db, limit_photo_uploads, limit_submissions
-from ..models import Listing, ListingStatus, Photo
+from ..models import Listing, ListingCategory, ListingStatus, Photo
 from ..schemas import (
     ListingSubmission,
     PhotoUploadResponse,
@@ -106,6 +106,7 @@ async def upload_photo(
 @router.get("", response_model=list[PublicListingCard])
 def list_approved(
     q: str | None = Query(default=None, max_length=120, description="Location or title text"),
+    category: ListingCategory = Query(default=ListingCategory.RENTAL),
     property_type: PropertyType | None = None,
     min_rent: int | None = Query(default=None, ge=0),
     max_rent: int | None = Query(default=None, ge=0),
@@ -114,7 +115,10 @@ def list_approved(
     db: Session = Depends(get_db),
 ):
     # Filters only ever narrow the mandatory APPROVED clause; they can never widen it.
-    stmt = select(Listing).where(Listing.status == APPROVED)
+    # The default feed is rentals; land is its own feed (?category=land).
+    stmt = select(Listing).where(
+        Listing.status == APPROVED, Listing.category == category.value
+    )
     if q and q.strip():
         like = f"%{q.strip()}%"
         stmt = stmt.where(

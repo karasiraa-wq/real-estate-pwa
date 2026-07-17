@@ -826,3 +826,480 @@ body {
   margin-bottom: 10px;
   resize: vertical;
 }
+
+/* Tenant paywall */
+
+.detail-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.credits-badge {
+  display: inline-block;
+  align-self: flex-start;
+  background: var(--green-tint);
+  color: var(--green-dark);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.feed > .credits-badge {
+  margin-bottom: 10px;
+}
+
+.btn-reveal {
+  width: 100%;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.btn-reveal:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.reveal-panel {
+  margin-top: 16px;
+}
+
+.reveal-panel h3 {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+}
+
+.reveal-hint {
+  margin: 0 0 14px;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.momo-box {
+  background: var(--green-tint);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.momo-number {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: var(--green-dark);
+}
+
+.momo-name {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: var(--green-dark);
+}
+
+.reveal-instructions {
+  margin: 0 0 14px;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.reveal-pending {
+  text-align: center;
+}
+
+.reveal-pending .btn-secondary {
+  margin-top: 8px;
+}
+
+/* Admin: payments tab */
+
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.admin-tab {
+  flex: 1;
+  min-height: 44px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.admin-tab.active {
+  background: var(--green-tint);
+  border-color: var(--green-dark);
+  color: var(--green-dark);
+}
+
+.claim-card .review-actions {
+  margin-top: 12px;
+}
+
+.manual-grant {
+  margin-top: 20px;
+}
+
+.manual-grant h3 {
+  margin: 0 0 2px;
+  font-size: 1.05rem;
+}
+
+.grant-success {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--green-dark);
+}
+
+/* ---------------------------------------------------------------------------
+   RentUg Land: same brand, earthy accent. Setting the accent variables on
+   .land-theme retints every accent inside the land section in one place. */
+
+.land-theme {
+  --green: #c98a3d;
+  --green-dark: #8a5a1f;
+  --green-tint: #f7efe2;
+}
+
+/* The WhatsApp button is a WhatsApp affordance: it keeps WhatsApp green
+   everywhere, including inside the land theme. */
+.btn-whatsapp {
+  background: #25d366;
+}
+
+.btn-whatsapp:active {
+  background: #1baa50;
+}
+
+.land-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 4px 0 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--green-tint);
+  border: 1px solid var(--green);
+}
+
+.land-banner p {
+  margin: 0;
+}
+
+.land-banner-name {
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+
+.land-banner-name strong {
+  color: var(--green-dark);
+}
+
+.land-banner-tag {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+/* Feed category tabs */
+
+.feed-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.feed-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  color: var(--ink-soft);
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.feed-tab.active {
+  border-color: var(--green);
+  background: var(--green-tint);
+  color: var(--green-dark);
+}
+
+/* Land cards */
+
+.land-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.land-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--green-tint);
+  color: var(--green-dark);
+  border: 1px solid var(--green);
+}
+
+.land-badge-title {
+  background: #fff;
+}
+
+/* Land detail: seller-stated title box (honesty constraint: these are the
+   SELLER's claims — RentUg reviews listings, it does not verify titles). */
+
+.land-title-box {
+  margin: 14px 0 4px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--green-tint);
+  border: 1px solid var(--green);
+}
+
+.land-title-claim {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.land-title-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+/* Category selector on the submission form */
+
+.category-choice {
+  border: 0;
+  padding: 0;
+  margin: 0 0 16px;
+}
+
+.category-choice legend {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.category-options {
+  display: flex;
+  gap: 10px;
+}
+
+.category-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.category-option.selected {
+  border-color: var(--green);
+  background: var(--green-tint);
+  color: var(--green-dark);
+}
+
+.category-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Admin category badges */
+
+.category-badge {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--green-tint);
+  color: var(--green-dark);
+  border: 1px solid var(--green);
+}
+
+.category-badge-land {
+  background: #f7efe2;
+  color: #8a5a1f;
+  border-color: #c98a3d;
+}
+
+.review-land-fields,
+.review-video {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+}
+
+.review-video a {
+  color: var(--green-dark);
+  word-break: break-all;
+}
+
+/* Lite YouTube embed: poster + play button, iframe only after a tap */
+
+.video-embed {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-top: 16px;
+  border: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+  padding: 0;
+}
+
+.video-embed iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.video-poster {
+  cursor: pointer;
+}
+
+.video-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.85;
+}
+
+.video-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 1.6rem;
+  line-height: 64px;
+  text-align: center;
+  padding-left: 4px;
+}
+
+.video-label {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+/* Maps (Leaflet, lazy-loaded) */
+
+.map-card {
+  margin-top: 16px;
+  padding: 14px;
+}
+
+.map-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.map-head .detail-heading {
+  margin: 0;
+}
+
+.map-note {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+}
+
+.map-canvas {
+  width: 100%;
+  height: 220px;
+  border-radius: 10px;
+  background: var(--green-tint);
+  overflow: hidden;
+}
+
+.map-canvas-picker {
+  height: 280px;
+}
+
+.map-pin {
+  position: relative;
+}
+
+.map-pin::after {
+  content: '📍';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.btn-directions {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--green);
+  color: #073b1c;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.map-picker-label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+
+.map-picker-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}

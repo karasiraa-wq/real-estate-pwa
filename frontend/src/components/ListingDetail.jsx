@@ -1,11 +1,23 @@
 import { useEffect, useState } from 'react'
 import { fetchListing } from '../api.js'
-import { formatUGX, propertyTypeLabel } from '../lib/validation.js'
-import { whatsappLink } from '../lib/whatsapp.js'
+import {
+  formatUGX,
+  propertyTypeLabel,
+  tenureLabel,
+  titleStatusLabel,
+} from '../lib/validation.js'
+import CreditsBadge from './CreditsBadge.jsx'
+import LandBanner from './LandBanner.jsx'
+import MapPreview from './MapPreview.jsx'
+import RevealContact from './RevealContact.jsx'
+import VideoEmbed from './VideoEmbed.jsx'
 
 export default function ListingDetail({ id, navigate }) {
   const [listing, setListing] = useState(null)
   const [error, setError] = useState(null)
+  // Exact coordinates only ever arrive from the authenticated contact reveal;
+  // until then a rental's map shows the server's approximate area.
+  const [revealedCoords, setRevealedCoords] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -18,9 +30,12 @@ export default function ListingDetail({ id, navigate }) {
   }, [id])
 
   const back = (
-    <button className="detail-back" onClick={() => navigate('/')}>
-      ← All listings
-    </button>
+    <div className="detail-topbar">
+      <button className="detail-back" onClick={() => navigate('/')}>
+        ← All listings
+      </button>
+      <CreditsBadge />
+    </div>
   )
 
   if (error) {
@@ -55,10 +70,20 @@ export default function ListingDetail({ id, navigate }) {
     )
   }
 
+  const isLand = listing.category === 'land'
   const photos = listing.photo_urls ?? []
+  // Never show a guessed location: no coordinates, no map section.
+  const hasCoords = listing.public_latitude != null && listing.public_longitude != null
+  const mapCoords = revealedCoords ?? {
+    latitude: listing.public_latitude,
+    longitude: listing.public_longitude,
+  }
+  const mapApproximate = listing.location_approximate && revealedCoords === null
+
   return (
-    <article className="detail">
+    <article className={isLand ? 'detail land-theme' : 'detail'}>
       {back}
+      {isLand && <LandBanner />}
       {photos.length > 0 ? (
         <div className="gallery" aria-label={`${photos.length} photos`}>
           {photos.map((url, i) => (
@@ -72,40 +97,76 @@ export default function ListingDetail({ id, navigate }) {
         </div>
       ) : (
         <div className="feed-photo feed-photo-empty gallery-empty" aria-hidden="true">
-          🏠
+          {isLand ? '🌍' : '🏠'}
         </div>
       )}
 
       <div className="card detail-card">
-        <p className="feed-rent detail-rent">
-          {formatUGX(listing.rent_ugx)} <span>/month</span>
-        </p>
+        {isLand ? (
+          <p className="feed-rent detail-rent">{formatUGX(listing.asking_price_ugx)}</p>
+        ) : (
+          <p className="feed-rent detail-rent">
+            {formatUGX(listing.rent_ugx)} <span>/month</span>
+          </p>
+        )}
         <h2 className="detail-title">{listing.title}</h2>
         <p className="detail-location">
           📍 {listing.area}, {listing.district}
           {listing.landmark ? ` · ${listing.landmark}` : ''}
         </p>
-        <span className="detail-type">{propertyTypeLabel(listing.property_type)}</span>
+        {isLand ? (
+          <span className="detail-type">Plot · {listing.plot_size}</span>
+        ) : (
+          <span className="detail-type">{propertyTypeLabel(listing.property_type)}</span>
+        )}
 
-        <h3 className="detail-heading">About this property</h3>
+        {isLand && (
+          /* HONESTY CONSTRAINT: tenure and title claims belong to the seller.
+             RentUg reviews listings; it does not verify land titles — the UI
+             must never say or imply that it does. */
+          <div className="land-title-box">
+            <p className="land-title-claim">
+              Seller states: <strong>{tenureLabel(listing.tenure)}</strong> ·{' '}
+              <strong>{titleStatusLabel(listing.title_status)}</strong>
+            </p>
+            <p className="land-title-note">
+              Tenure and title details are provided by the seller. Always verify the title at
+              the land registry before paying.
+            </p>
+          </div>
+        )}
+
+        <h3 className="detail-heading">{isLand ? 'About this plot' : 'About this property'}</h3>
         <p className="detail-description">{listing.description}</p>
 
         <div className="detail-landlord">
           <p>
             Listed by <strong>{listing.landlord_name}</strong>
           </p>
-          <p className="detail-verified">✓ Verified by RentUg before going live</p>
+          <p className="detail-verified">
+            {isLand ? 'Listing reviewed by RentUg' : '✓ Verified by RentUg before going live'}
+          </p>
         </div>
       </div>
 
-      <a
-        className="btn-whatsapp"
-        href={whatsappLink(listing)}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        WhatsApp Owner
-      </a>
+      {listing.video_url && <VideoEmbed url={listing.video_url} title={listing.title} />}
+
+      {hasCoords && (
+        <MapPreview
+          latitude={mapCoords.latitude}
+          longitude={mapCoords.longitude}
+          approximate={mapApproximate}
+        />
+      )}
+
+      <RevealContact
+        listing={listing}
+        onRevealed={(res) => {
+          if (res.latitude != null && res.longitude != null) {
+            setRevealedCoords({ latitude: res.latitude, longitude: res.longitude })
+          }
+        }}
+      />
     </article>
   )
 }

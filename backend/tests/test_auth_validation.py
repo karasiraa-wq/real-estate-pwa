@@ -10,6 +10,9 @@ ADMIN_PATHS = [
     ("GET", "/api/admin/listings"),
     ("POST", "/api/admin/listings/1/approve"),
     ("POST", "/api/admin/listings/1/reject"),
+    ("GET", "/api/admin/payment-claims"),
+    ("POST", "/api/admin/payment-claims/1/approve"),
+    ("POST", "/api/admin/credit-grants"),
 ]
 
 

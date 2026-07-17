@@ -28,12 +28,17 @@ export default function App() {
     tagline = 'Listing review'
   } else if (path === '/submit') {
     page = <ListingForm />
-    tagline = 'List your property — it goes live once verified'
+    tagline = 'List your property or land — it goes live once verified'
   } else if (detail) {
     page = <ListingDetail id={detail[1]} navigate={navigate} />
     tagline = 'Every listing is checked before it goes live'
+  } else if (path === '/land') {
+    // RentUg Land: same app and brand, its own themed section (key remounts
+    // the feed so switching tabs never flashes the other category's cards).
+    page = <FeedPage key="land" navigate={navigate} category="land" />
+    tagline = 'Plots and land for sale — reviewed before they go live'
   } else {
-    page = <FeedPage navigate={navigate} />
+    page = <FeedPage key="rental" navigate={navigate} />
     tagline = 'Every listing is checked before it goes live'
   }
 

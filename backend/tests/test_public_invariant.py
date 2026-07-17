@@ -49,11 +49,13 @@ def test_public_payloads_never_contain_admin_fields(client):
     approved_id = submit(client)
     approve(client, approved_id)
 
-    for payload in (client.get("/api/listings").json(),
-                    client.get(f"/api/listings/{approved_id}").json()):
-        blob = json.dumps(payload)
-        assert "rejection_reason" not in blob
-        assert "status" not in blob
+    # Key check, not substring: public land fields like title_status are fine,
+    # the admin-only "status" and "rejection_reason" keys are not.
+    feed = client.get("/api/listings").json()
+    detail = client.get(f"/api/listings/{approved_id}").json()
+    for obj in (*feed, detail):
+        assert "rejection_reason" not in obj
+        assert "status" not in obj
 
 
 def test_rejection_reason_never_reaches_public_responses(client):

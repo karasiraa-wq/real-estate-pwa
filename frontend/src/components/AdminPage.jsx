@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
-import { approveListing, fetchAdminQueue, rejectListing } from '../api.js'
-import { PROPERTY_TYPES, formatUGX } from '../lib/validation.js'
+import {
+  approveListing,
+  approvePaymentClaim,
+  fetchAdminQueue,
+  fetchPaymentClaims,
+  grantCredits,
+  rejectListing,
+} from '../api.js'
+import {
+  PROPERTY_TYPES,
+  UG_PHONE,
+  formatUGX,
+  tenureLabel,
+  titleStatusLabel,
+} from '../lib/validation.js'
 
 // sessionStorage: the token survives reloads in this tab but not a closed
 // browser, and is never written to disk beyond the session.
@@ -10,6 +23,7 @@ const TYPE_LABELS = Object.fromEntries(PROPERTY_TYPES.map((t) => [t.value, t.lab
 
 export default function AdminPage() {
   const [token, setToken] = useState(() => sessionStorage.getItem(TOKEN_KEY) || '')
+  const [tab, setTab] = useState('listings')
 
   function login(newToken) {
     sessionStorage.setItem(TOKEN_KEY, newToken)
@@ -22,7 +36,31 @@ export default function AdminPage() {
   }
 
   if (!token) return <AdminLogin onLogin={login} />
-  return <AdminQueue token={token} onLogout={logout} />
+  return (
+    <>
+      <nav className="admin-tabs" aria-label="Admin sections">
+        <button
+          type="button"
+          className={tab === 'listings' ? 'admin-tab active' : 'admin-tab'}
+          onClick={() => setTab('listings')}
+        >
+          Listings
+        </button>
+        <button
+          type="button"
+          className={tab === 'payments' ? 'admin-tab active' : 'admin-tab'}
+          onClick={() => setTab('payments')}
+        >
+          Payments
+        </button>
+      </nav>
+      {tab === 'listings' ? (
+        <AdminQueue token={token} onLogout={logout} />
+      ) : (
+        <PaymentsPanel token={token} onLogout={logout} />
+      )}
+    </>
+  )
 }
 
 function AdminLogin({ onLogin }) {
@@ -162,21 +200,61 @@ function ReviewCard({ listing, token, onDone, onAuthExpired }) {
     year: 'numeric',
   })
 
+  const isLand = listing.category === 'land'
+
   return (
     <article className="card review-card" aria-label={listing.title}>
       <div className="review-head">
-        <h3>{listing.title}</h3>
+        <h3>
+          <span className={isLand ? 'category-badge category-badge-land' : 'category-badge'}>
+            {isLand ? 'Land' : 'Rental'}
+          </span>{' '}
+          {listing.title}
+        </h3>
         <p className="review-meta">
-          #{listing.id} · {TYPE_LABELS[listing.property_type] || listing.property_type} ·
-          submitted {submitted}
+          #{listing.id} ·{' '}
+          {isLand
+            ? `Plot ${listing.plot_size}`
+            : TYPE_LABELS[listing.property_type] || listing.property_type}{' '}
+          · submitted {submitted}
         </p>
       </div>
 
-      <p className="review-rent">{formatUGX(listing.rent_ugx)} /month</p>
+      {isLand ? (
+        <>
+          <p className="review-rent">{formatUGX(listing.asking_price_ugx)} asking price</p>
+          <p className="review-land-fields">
+            Tenure: <strong>{tenureLabel(listing.tenure)}</strong> · Title:{' '}
+            <strong>{titleStatusLabel(listing.title_status)}</strong> (as stated by the seller)
+          </p>
+        </>
+      ) : (
+        <p className="review-rent">{formatUGX(listing.rent_ugx)} /month</p>
+      )}
       <p className="review-location">
         {listing.area}, {listing.district}
         {listing.landmark ? ` — ${listing.landmark}` : ''}
+        {listing.latitude != null && (
+          <>
+            {' · '}
+            <a
+              href={`https://www.openstreetmap.org/?mlat=${listing.latitude}&mlon=${listing.longitude}#map=16/${listing.latitude}/${listing.longitude}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              pinned location
+            </a>
+          </>
+        )}
       </p>
+      {listing.video_url && (
+        <p className="review-video">
+          Video:{' '}
+          <a href={listing.video_url} target="_blank" rel="noreferrer">
+            {listing.video_url}
+          </a>
+        </p>
+      )}
       <p className="review-description">{listing.description}</p>
 
       {listing.photo_urls.length > 0 ? (
@@ -251,5 +329,220 @@ function ReviewCard({ listing, token, onDone, onAuthExpired }) {
         </div>
       )}
     </article>
+  )
+}
+
+function PaymentsPanel({ token, onLogout }) {
+  const [claims, setClaims] = useState(null) // null = loading
+  const [error, setError] = useState('')
+
+  const load = useCallback(async () => {
+    setError('')
+    setClaims(null)
+    try {
+      setClaims(await fetchPaymentClaims(token))
+    } catch (err) {
+      if (err.status === 401) return onLogout()
+      setError(err.message)
+      setClaims([])
+    }
+  }, [token, onLogout])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  function removeClaim(id) {
+    setClaims((c) => c.filter((x) => x.id !== id))
+  }
+
+  return (
+    <section className="admin-queue">
+      <div className="queue-bar">
+        <h2>
+          Pending payments
+          {claims !== null && <span className="queue-count"> · {claims.length}</span>}
+        </h2>
+        <div className="queue-actions">
+          <button type="button" className="btn-small" onClick={load}>
+            Refresh
+          </button>
+          <button type="button" className="btn-small" onClick={onLogout}>
+            Sign out
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <p className="submit-error" role="alert">
+          {error}
+        </p>
+      )}
+      {claims === null && <p className="queue-empty">Loading claims…</p>}
+      {claims !== null && claims.length === 0 && !error && (
+        <p className="queue-empty">No pending payment claims.</p>
+      )}
+      {claims?.map((claim) => (
+        <ClaimCard
+          key={claim.id}
+          claim={claim}
+          token={token}
+          onDone={removeClaim}
+          onAuthExpired={onLogout}
+        />
+      ))}
+
+      <ManualGrantForm token={token} onAuthExpired={onLogout} />
+    </section>
+  )
+}
+
+function ClaimCard({ claim, token, onDone, onAuthExpired }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const submitted = new Date(claim.created_at).toLocaleString('en-UG', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+
+  async function approve() {
+    setBusy(true)
+    setError('')
+    try {
+      await approvePaymentClaim(token, claim.id)
+      onDone(claim.id)
+    } catch (err) {
+      if (err.status === 401) return onAuthExpired()
+      // 409 = approved elsewhere or tx already granted; the card is stale.
+      if (err.status === 409) return onDone(claim.id)
+      setError(err.message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <article className="card review-card claim-card" aria-label={`Claim ${claim.momo_tx_id}`}>
+      <div className="review-head">
+        <h3>
+          {claim.category === 'land' && (
+            <span className="category-badge category-badge-land">Land</span>
+          )}{' '}
+          {claim.tenant_phone}
+        </h3>
+        <p className="review-meta">
+          Transaction <strong>{claim.momo_tx_id}</strong> ·{' '}
+          {claim.category === 'land' ? 'land credit bundle' : 'rental credit bundle'} · submitted{' '}
+          {submitted}
+        </p>
+      </div>
+      {error && (
+        <p className="submit-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="review-actions">
+        <button type="button" className="btn-approve" disabled={busy} onClick={approve}>
+          {busy ? 'Approving…' : 'Approve — grant reveals'}
+        </button>
+      </div>
+    </article>
+  )
+}
+
+function ManualGrantForm({ token, onAuthExpired }) {
+  const [phone, setPhone] = useState('')
+  const [txId, setTxId] = useState('')
+  const [category, setCategory] = useState('rental')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSuccess('')
+    const cleanPhone = phone.replace(/[\s-]/g, '')
+    if (!UG_PHONE.test(cleanPhone)) {
+      setError('Enter the tenant phone number, e.g. 0771234567')
+      return
+    }
+    if (!txId.trim()) {
+      setError('Enter the MoMo transaction ID')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      const grant = await grantCredits(token, {
+        phone: cleanPhone,
+        momo_tx_id: txId.trim(),
+        category,
+      })
+      setSuccess(
+        `Granted ${grant.credits} ${grant.category === 'land' ? 'land ' : ''}reveals to ${grant.tenant_phone}`
+      )
+      setPhone('')
+      setTxId('')
+    } catch (err) {
+      if (err.status === 401) return onAuthExpired()
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form className="card manual-grant" onSubmit={handleSubmit}>
+      <h3>Manual grant</h3>
+      <p className="review-meta">
+        For tenants who paid without submitting a claim in the app.
+      </p>
+      <div className="field">
+        <label htmlFor="grant_phone">Tenant phone number</label>
+        <input
+          id="grant_phone"
+          type="tel"
+          inputMode="tel"
+          placeholder="0771234567"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+      </div>
+      <div className="field">
+        <label htmlFor="grant_tx">MoMo transaction ID</label>
+        <input
+          id="grant_tx"
+          autoComplete="off"
+          value={txId}
+          onChange={(e) => setTxId(e.target.value)}
+        />
+      </div>
+      <div className="field">
+        <label htmlFor="grant_category">Credit type</label>
+        <select
+          id="grant_category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        >
+          <option value="rental">Rental reveals (default bundle)</option>
+          <option value="land">Land reveals (default bundle)</option>
+        </select>
+      </div>
+      {error && (
+        <p className="submit-error" role="alert">
+          {error}
+        </p>
+      )}
+      {success && (
+        <p className="grant-success" role="status">
+          ✓ {success}
+        </p>
+      )}
+      <button type="submit" className="btn-primary" disabled={busy}>
+        {busy ? 'Granting…' : 'Grant reveals'}
+      </button>
+    </form>
   )
 }
