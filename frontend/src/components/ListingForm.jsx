@@ -9,6 +9,7 @@ import {
   formatUGX,
   validateListing,
 } from '../lib/validation.js'
+import CategoryMark from './CategoryMark.jsx'
 import Confirmation from './Confirmation.jsx'
 import MapPicker from './MapPicker.jsx'
 import PhotoPicker from './PhotoPicker.jsx'
@@ -170,45 +171,92 @@ export default function ListingForm() {
   const rentPreview = formatUGX(values.rent_ugx)
   const pricePreview = formatUGX(values.asking_price_ugx)
 
+  // Section completeness for the progress strip: purely visual encouragement,
+  // validation stays with validateListing on submit.
+  const filled = (v) => String(v ?? '').trim() !== ''
+  const steps = [
+    {
+      label: 'Details',
+      done:
+        filled(values.title) &&
+        filled(values.description) &&
+        (isLand
+          ? filled(values.plot_size) &&
+            filled(values.tenure) &&
+            filled(values.title_status) &&
+            filled(values.asking_price_ugx)
+          : filled(values.property_type) && filled(values.rent_ugx)),
+    },
+    { label: 'Location', done: filled(values.district) && filled(values.area) },
+    { label: 'Photos', done: photos.length > 0 },
+    { label: 'Contact', done: filled(values.landlord_name) && filled(values.whatsapp_phone) },
+  ]
+
   return (
     <form
-      className={isLand ? 'card listing-form land-theme' : 'card listing-form'}
+      className={isLand ? 'listing-form land-theme' : 'listing-form'}
       onSubmit={handleSubmit}
       noValidate
     >
-      <h2>{isLand ? 'List your land' : 'List your property'}</h2>
-      <p className="form-intro">
-        Free to list. We verify every listing before tenants see it — usually within
-        24 hours.
-      </p>
+      <header className="form-hero">
+        <h2>{isLand ? 'List your land' : 'List your property'}</h2>
+        <p className="form-intro">
+          Free to list. We verify every listing before tenants see it — usually within
+          24 hours.
+        </p>
+      </header>
 
-      <fieldset className="field category-choice">
-        <legend>What are you listing?</legend>
-        <div className="category-options">
-          <label className={!isLand ? 'category-option selected' : 'category-option'}>
-            <input
-              type="radio"
-              name="category"
-              value="rental"
-              checked={!isLand}
-              onChange={() => setValue('category', 'rental')}
-            />
-            🏠 Rental
-          </label>
-          <label className={isLand ? 'category-option selected' : 'category-option'}>
-            <input
-              type="radio"
-              name="category"
-              value="land"
-              checked={isLand}
-              onChange={() => setValue('category', 'land')}
-            />
-            🌍 Land
-          </label>
-        </div>
-      </fieldset>
+      <ol className="form-progress" aria-label="Form sections">
+        {steps.map((step, i) => (
+          <li key={step.label} className={step.done ? 'progress-step done' : 'progress-step'}>
+            <span className="step-dot" aria-hidden="true">
+              {step.done ? '✓' : i + 1}
+            </span>
+            <span className="step-label">{step.label}</span>
+          </li>
+        ))}
+      </ol>
 
-      <Field label="Listing title" name="title" error={errors.title}>
+      <section className="card form-section">
+        <h3 className="form-section-title">
+          <span className="step-chip">1</span>Property details
+        </h3>
+
+        <fieldset className="field category-choice">
+          <legend>What are you listing?</legend>
+          <div className="category-options">
+            <label className={!isLand ? 'category-option selected' : 'category-option'}>
+              <input
+                type="radio"
+                name="category"
+                value="rental"
+                checked={!isLand}
+                onChange={() => setValue('category', 'rental')}
+              />
+              <CategoryMark kind="rental" />
+              <span className="category-text">
+                <span className="category-name">Rental</span>
+                <span className="category-sub">Rooms, apartments, houses</span>
+              </span>
+            </label>
+            <label className={isLand ? 'category-option selected' : 'category-option'}>
+              <input
+                type="radio"
+                name="category"
+                value="land"
+                checked={isLand}
+                onChange={() => setValue('category', 'land')}
+              />
+              <CategoryMark kind="land" />
+              <span className="category-text">
+                <span className="category-name">Land</span>
+                <span className="category-sub">Plots for sale</span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+
+        <Field label="Listing title" name="title" error={errors.title}>
         <input
           id="title"
           type="text"
@@ -288,37 +336,6 @@ export default function ListingForm() {
         </>
       )}
 
-      <div className="field-row">
-        <Field label="District" name="district" error={errors.district}>
-          <input
-            id="district"
-            type="text"
-            placeholder="e.g. Kampala"
-            value={values.district}
-            onChange={(e) => setValue('district', e.target.value)}
-          />
-        </Field>
-        <Field label="Area / Neighborhood" name="area" error={errors.area}>
-          <input
-            id="area"
-            type="text"
-            placeholder="e.g. Kansanga"
-            value={values.area}
-            onChange={(e) => setValue('area', e.target.value)}
-          />
-        </Field>
-      </div>
-
-      <Field label="Nearby landmark (optional)" name="landmark" error={errors.landmark}>
-        <input
-          id="landmark"
-          type="text"
-          placeholder="e.g. Near Kansanga Miracle Centre"
-          value={values.landmark}
-          onChange={(e) => setValue('landmark', e.target.value)}
-        />
-      </Field>
-
       {isLand ? (
         <Field
           label="Asking price (UGX)"
@@ -367,7 +384,48 @@ export default function ListingForm() {
           onChange={(e) => setValue('description', e.target.value)}
         />
       </Field>
+      </section>
 
+      <section className="card form-section">
+        <h3 className="form-section-title">
+          <span className="step-chip">2</span>Location
+        </h3>
+        <div className="field-row">
+          <Field label="District" name="district" error={errors.district}>
+            <input
+              id="district"
+              type="text"
+              placeholder="e.g. Kampala"
+              value={values.district}
+              onChange={(e) => setValue('district', e.target.value)}
+            />
+          </Field>
+          <Field label="Area / Neighborhood" name="area" error={errors.area}>
+            <input
+              id="area"
+              type="text"
+              placeholder="e.g. Kansanga"
+              value={values.area}
+              onChange={(e) => setValue('area', e.target.value)}
+            />
+          </Field>
+        </div>
+        <Field label="Nearby landmark (optional)" name="landmark" error={errors.landmark}>
+          <input
+            id="landmark"
+            type="text"
+            placeholder="e.g. Near Kansanga Miracle Centre"
+            value={values.landmark}
+            onChange={(e) => setValue('landmark', e.target.value)}
+          />
+        </Field>
+        <MapPicker value={pin} onChange={setPin} error={errors.latitude || errors.longitude} />
+      </section>
+
+      <section className="card form-section">
+        <h3 className="form-section-title">
+          <span className="step-chip">3</span>Photos &amp; video
+        </h3>
       <PhotoPicker
         photos={photos}
         busy={preparingPhotos}
@@ -392,15 +450,17 @@ export default function ListingForm() {
           onChange={(e) => setValue('video_url', e.target.value)}
         />
       </Field>
+      </section>
 
-      <MapPicker value={pin} onChange={setPin} error={errors.latitude || errors.longitude} />
-
-      <h3 className="section-heading">Your contact details</h3>
-      <p className="form-intro">
-        {isLand
-          ? 'Buyers will contact you directly on WhatsApp.'
-          : 'Tenants will contact you directly on WhatsApp.'}
-      </p>
+      <section className="card form-section">
+        <h3 className="form-section-title">
+          <span className="step-chip">4</span>Contact
+        </h3>
+        <p className="form-section-hint">
+          {isLand
+            ? 'Buyers will contact you directly on WhatsApp.'
+            : 'Tenants will contact you directly on WhatsApp.'}
+        </p>
 
       <Field label="Your name" name="landlord_name" error={errors.landlord_name}>
         <input
@@ -423,19 +483,22 @@ export default function ListingForm() {
           onChange={(e) => setValue('whatsapp_phone', e.target.value)}
         />
       </Field>
+      </section>
 
-      {submitError && (
-        <p className="submit-error" role="alert">
-          {submitError}
+      <div className="form-submit">
+        {submitError && (
+          <p className="submit-error" role="alert">
+            {submitError}
+          </p>
+        )}
+        <button type="submit" className="btn-primary" disabled={submitting || preparingPhotos}>
+          {submitting ? progress : 'Submit for review'}
+        </button>
+        {submitting && <div className="submit-progress" aria-hidden="true" />}
+        <p className="form-footnote">
+          Your listing will not be public until it has been verified.
         </p>
-      )}
-
-      <button type="submit" className="btn-primary" disabled={submitting || preparingPhotos}>
-        {submitting ? progress : 'Submit for review'}
-      </button>
-      <p className="form-footnote">
-        Your listing will not be public until it has been verified.
-      </p>
+      </div>
     </form>
   )
 }

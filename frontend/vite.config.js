@@ -18,8 +18,10 @@ export default defineConfig({
         short_name: 'RentUg',
         description:
           'Verified rental properties across Uganda. Every listing is checked before it goes live. Contact landlords directly on WhatsApp.',
-        theme_color: '#25D366',
-        background_color: '#ffffff',
+        // Matches the app header band (deep brand green) and page background,
+        // so the status bar and splash blend into the shell.
+        theme_color: '#0b3524',
+        background_color: '#f2f6f3',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',

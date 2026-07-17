@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fetchListing } from '../api.js'
 import {
   formatUGX,
@@ -7,7 +7,10 @@ import {
   titleStatusLabel,
 } from '../lib/validation.js'
 import CreditsBadge from './CreditsBadge.jsx'
+import FadeImg from './FadeImg.jsx'
 import LandBanner from './LandBanner.jsx'
+import Logo from './Logo.jsx'
+import PinIcon from './PinIcon.jsx'
 import MapPreview from './MapPreview.jsx'
 import RevealContact from './RevealContact.jsx'
 import VideoEmbed from './VideoEmbed.jsx'
@@ -85,27 +88,18 @@ export default function ListingDetail({ id, navigate }) {
       {back}
       {isLand && <LandBanner />}
       {photos.length > 0 ? (
-        <div className="gallery" aria-label={`${photos.length} photos`}>
-          {photos.map((url, i) => (
-            <img
-              key={url}
-              src={url}
-              alt={`Photo ${i + 1} of ${photos.length} — ${listing.title}`}
-              loading={i === 0 ? 'eager' : 'lazy'}
-            />
-          ))}
-        </div>
+        <Carousel photos={photos} title={listing.title} />
       ) : (
         <div className="feed-photo feed-photo-empty gallery-empty" aria-hidden="true">
-          {isLand ? '🌍' : '🏠'}
+          <Logo size={62} tone={isLand ? 'land' : 'green'} className="placeholder-logo" />
         </div>
       )}
 
       <div className="card detail-card">
         {isLand ? (
-          <p className="feed-rent detail-rent">{formatUGX(listing.asking_price_ugx)}</p>
+          <p className="detail-rent">{formatUGX(listing.asking_price_ugx)}</p>
         ) : (
-          <p className="feed-rent detail-rent">
+          <p className="detail-rent">
             {formatUGX(listing.rent_ugx)} <span>/month</span>
             {/* tier only arrives from the API once the paywall is live */}
             {listing.tier === 'premium' && <span className="premium-badge">Premium</span>}
@@ -113,7 +107,8 @@ export default function ListingDetail({ id, navigate }) {
         )}
         <h2 className="detail-title">{listing.title}</h2>
         <p className="detail-location">
-          📍 {listing.area}, {listing.district}
+          <PinIcon />
+          {listing.area}, {listing.district}
           {listing.landmark ? ` · ${listing.landmark}` : ''}
         </p>
         {isLand ? (
@@ -161,14 +156,63 @@ export default function ListingDetail({ id, navigate }) {
         />
       )}
 
-      <RevealContact
-        listing={listing}
-        onRevealed={(res) => {
-          if (res.latitude != null && res.longitude != null) {
-            setRevealedCoords({ latitude: res.latitude, longitude: res.longitude })
-          }
-        }}
-      />
+      {/* Sticky dock keeps the reveal/WhatsApp action reachable while
+          scrolling; the register/pay panels opt back out via CSS :has. */}
+      <div className="cta-dock">
+        <RevealContact
+          listing={listing}
+          onRevealed={(res) => {
+            if (res.latitude != null && res.longitude != null) {
+              setRevealedCoords({ latitude: res.latitude, longitude: res.longitude })
+            }
+          }}
+        />
+      </div>
     </article>
+  )
+}
+
+/** Swipeable photo strip with position dots — CSS scroll-snap does the
+ *  swiping; scroll position drives the active dot. */
+function Carousel({ photos, title }) {
+  const trackRef = useRef(null)
+  const [index, setIndex] = useState(0)
+
+  function handleScroll() {
+    const el = trackRef.current
+    if (!el || el.clientWidth === 0) return
+    setIndex(Math.min(photos.length - 1, Math.round(el.scrollLeft / el.clientWidth)))
+  }
+
+  return (
+    <div className="carousel">
+      <div
+        className="gallery"
+        ref={trackRef}
+        onScroll={handleScroll}
+        aria-label={`${photos.length} photos`}
+      >
+        {photos.map((url, i) => (
+          <FadeImg
+            key={url}
+            src={url}
+            alt={`Photo ${i + 1} of ${photos.length} — ${title}`}
+            loading={i === 0 ? 'eager' : 'lazy'}
+          />
+        ))}
+      </div>
+      {photos.length > 1 && (
+        <>
+          <span className="gallery-count">
+            {index + 1} / {photos.length}
+          </span>
+          <div className="gallery-dots" aria-hidden="true">
+            {photos.map((url, i) => (
+              <span key={url} className={i === index ? 'gallery-dot active' : 'gallery-dot'} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   )
 }

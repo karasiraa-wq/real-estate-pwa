@@ -54,7 +54,9 @@ describe('tenant feed', () => {
     // Photo-forward card: photo, title, location, rent in UGX.
     expect(within(cards[0]).getByRole('img')).toHaveAttribute('src', '/uploads/b.jpg')
     expect(within(cards[0]).getByText(/UGX 1,200,000/)).toBeInTheDocument()
-    expect(within(cards[0]).getByText(/Ntinda, Kampala · Apartment/)).toBeInTheDocument()
+    // Location line and type chip are separate elements on the card.
+    expect(within(cards[0]).getByText(/Ntinda, Kampala/)).toBeInTheDocument()
+    expect(within(cards[0]).getByText('Apartment')).toBeInTheDocument()
     expect(within(cards[1]).getByText(/UGX 450,000/)).toBeInTheDocument()
     expect(screen.queryByTestId('feed-skeleton')).not.toBeInTheDocument()
   })

@@ -24,6 +24,7 @@ export default function RevealContact({ listing, onRevealed }) {
   const [payInfo, setPayInfo] = useState(null)
   const [txId, setTxId] = useState('')
   const [whatsappPhone, setWhatsappPhone] = useState(null)
+  const [copied, setCopied] = useState(false)
   const isLand = listing.category === 'land'
   const ownerNoun = isLand ? 'Seller' : 'Owner'
 
@@ -153,6 +154,15 @@ export default function RevealContact({ listing, onRevealed }) {
     // Pass (20,000, capped — never "unlimited"), or land bundle (50,000/3).
     const payLand = payInfo.category === 'land'
     const payPass = payInfo.product === 'premium_pass'
+    const copyNumber = async () => {
+      try {
+        await navigator.clipboard.writeText(payInfo.momo_number)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      } catch {
+        // Clipboard unavailable — the number stays visible to copy by hand.
+      }
+    }
     return (
       <div className="card reveal-panel">
         <h3>
@@ -162,6 +172,17 @@ export default function RevealContact({ listing, onRevealed }) {
               ? 'Buy land contact reveals'
               : 'Buy contact reveals'}
         </h3>
+        <p className="receipt-price">
+          <strong>{formatUGX(payInfo.price_ugx)}</strong>
+          <span>
+            {payPass
+              ? 'Premium Day Pass'
+              : `${payInfo.credits_per_purchase} ${
+                  payLand ? 'land seller contacts' : 'contact reveals'
+                }`}
+          </span>
+        </p>
+        {payPass && <p className="pass-valid-chip">Valid until midnight tonight</p>}
         {payPass && payInfo.pass_status === 'expired' && (
           <p className="pass-status-note">Your last day pass expired at midnight.</p>
         )}
@@ -185,8 +206,13 @@ export default function RevealContact({ listing, onRevealed }) {
           )}
         </p>
         <div className="momo-box">
-          <p className="momo-number">{payInfo.momo_number}</p>
-          <p className="momo-name">{payInfo.momo_name} · Mobile Money</p>
+          <div>
+            <p className="momo-number">{payInfo.momo_number}</p>
+            <p className="momo-name">{payInfo.momo_name} · Mobile Money</p>
+          </div>
+          <button type="button" className="btn-copy" onClick={copyNumber}>
+            {copied ? 'Copied ✓' : 'Copy'}
+          </button>
         </div>
         <p className="reveal-instructions">{payInfo.payment_instructions}</p>
         <form onSubmit={handleClaim}>

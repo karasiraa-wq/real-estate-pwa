@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fetchTenantMe } from '../api.js'
 import { getTenantToken } from '../lib/tenant.js'
 
@@ -22,6 +22,21 @@ function passUntilLabel(expiresAt) {
 
 export default function CreditsBadge() {
   const [balances, setBalances] = useState(null) // null = hidden
+  const [pulse, setPulse] = useState(false)
+  const lastShown = useRef(null)
+
+  // Pulse the chip when a balance it shows changes (a reveal was spent or
+  // credits arrived) — never on first paint.
+  useEffect(() => {
+    if (balances === null) return undefined
+    const shown = `${balances.rental}|${balances.land}|${balances.passRemaining ?? ''}`
+    const changed = lastShown.current !== null && lastShown.current !== shown
+    lastShown.current = shown
+    if (!changed) return undefined
+    setPulse(true)
+    const timer = setTimeout(() => setPulse(false), 500)
+    return () => clearTimeout(timer)
+  }, [balances])
 
   useEffect(() => {
     let cancelled = false
@@ -66,7 +81,7 @@ export default function CreditsBadge() {
 
   if (balances === null) return null
   return (
-    <span className="credits-badge">
+    <span className={pulse ? 'credits-badge count-bump' : 'credits-badge'}>
       {balances.passActive && (
         <span className="pass-chip">
           Premium until {passUntilLabel(balances.passExpiresAt)} · {balances.passRemaining} left

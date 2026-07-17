@@ -8,7 +8,10 @@ import {
   titleStatusLabel,
 } from '../lib/validation.js'
 import CreditsBadge from './CreditsBadge.jsx'
+import FadeImg from './FadeImg.jsx'
 import LandBanner from './LandBanner.jsx'
+import Logo from './Logo.jsx'
+import PinIcon from './PinIcon.jsx'
 
 // Predefined bands beat free-number inputs on a phone; each maps to the
 // API's min_rent/max_rent params.
@@ -61,68 +64,77 @@ export default function FeedPage({ navigate, category = 'rental' }) {
   return (
     <div className={isLand ? 'feed land-theme' : 'feed'}>
       <CreditsBadge />
-      {/* Buttons, not links: cards are the feed's only links, and these tabs
+      <div className="feed-hero">
+        {/* Buttons, not links: cards are the feed's only links, and these tabs
           navigate through the app's own history routing anyway. */}
-      <nav className="feed-tabs" aria-label="Listing category">
-        <button
-          type="button"
-          className={isLand ? 'feed-tab' : 'feed-tab active'}
-          aria-pressed={!isLand}
-          onClick={() => navigate('/')}
-        >
-          Rentals
-        </button>
-        <button
-          type="button"
-          className={isLand ? 'feed-tab active' : 'feed-tab'}
-          aria-pressed={isLand}
-          onClick={() => navigate('/land')}
-        >
-          Land
-        </button>
-      </nav>
+        <nav className="feed-tabs" aria-label="Listing category">
+          <button
+            type="button"
+            className={isLand ? 'feed-tab' : 'feed-tab active'}
+            aria-pressed={!isLand}
+            onClick={() => navigate('/')}
+          >
+            Rentals
+          </button>
+          <button
+            type="button"
+            className={isLand ? 'feed-tab active' : 'feed-tab'}
+            aria-pressed={isLand}
+            onClick={() => navigate('/land')}
+          >
+            Land
+          </button>
+        </nav>
 
-      {isLand && <LandBanner />}
+        {isLand && <LandBanner />}
 
-      <div className="feed-filters" role="search">
-        <input
-          type="search"
-          className="feed-search"
-          aria-label="Search by location"
-          placeholder={
-            isLand ? 'Search district or area…' : 'Search area, district or landmark…'
-          }
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        {!isLand && (
-          <div className="feed-filter-row">
-            <select
-              aria-label="Property type"
-              value={propertyType}
-              onChange={(e) => setPropertyType(e.target.value)}
-            >
-              <option value="">All types</option>
-              {PROPERTY_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-            <select aria-label="Rent range" value={band} onChange={(e) => setBand(e.target.value)}>
-              {RENT_BANDS.map((b) => (
-                <option key={b.value} value={b.value}>
-                  {b.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div className="feed-filters" role="search">
+          <input
+            type="search"
+            className="feed-search"
+            aria-label="Search by location"
+            placeholder={
+              isLand ? 'Search district or area…' : 'Search area, district or landmark…'
+            }
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          {!isLand && (
+            <div className="feed-filter-row">
+              <select
+                aria-label="Property type"
+                value={propertyType}
+                onChange={(e) => setPropertyType(e.target.value)}
+              >
+                <option value="">All types</option>
+                {PROPERTY_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              <select aria-label="Rent range" value={band} onChange={(e) => setBand(e.target.value)}>
+                {RENT_BANDS.map((b) => (
+                  <option key={b.value} value={b.value}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
       </div>
 
       {error ? (
-        <div className="card feed-error" role="alert">
+        <div className="card feed-error empty-state" role="alert">
+          <Logo size={52} tone={isLand ? 'land' : 'green'} className="placeholder-logo" />
+          <h3>Something went wrong</h3>
           <p>{error}</p>
+          {!navigator.onLine && (
+            <p className="offline-hint">
+              You look offline — fresh listings will load when you reconnect.
+            </p>
+          )}
           <button className="btn-secondary" onClick={() => setRetryTick((t) => t + 1)}>
             Try again
           </button>
@@ -130,11 +142,15 @@ export default function FeedPage({ navigate, category = 'rental' }) {
       ) : listings === null ? (
         <SkeletonFeed />
       ) : listings.length === 0 ? (
-        <p className="feed-empty">
-          {isLand
-            ? 'No land listings match your search yet. Every plot is reviewed before it goes live — check back soon.'
-            : 'No listings match your search yet. Try a different area or price range.'}
-        </p>
+        <div className="card feed-empty empty-state">
+          <Logo size={52} tone={isLand ? 'land' : 'green'} className="placeholder-logo" />
+          <h3>No listings here yet</h3>
+          <p>
+            {isLand
+              ? 'No land listings match your search yet. Every plot is reviewed before it goes live — check back soon.'
+              : 'No listings match your search yet. Try a different area or price range.'}
+          </p>
+        </div>
       ) : (
         <ul className="feed-grid">
           {listings.map((listing) => (
@@ -161,7 +177,7 @@ function ListingCard({ listing, navigate }) {
       >
         <div className="feed-photo-wrap">
           {listing.photo_url ? (
-            <img
+            <FadeImg
               className="feed-photo"
               src={listing.photo_url}
               alt={`Photo of ${listing.title}`}
@@ -169,7 +185,7 @@ function ListingCard({ listing, navigate }) {
             />
           ) : (
             <div className="feed-photo feed-photo-empty" aria-hidden="true">
-              {isLand ? '🌍' : '🏠'}
+              <Logo size={54} tone={isLand ? 'land' : 'green'} className="placeholder-logo" />
             </div>
           )}
           {/* Land wording is deliberate: RentUg reviews listings, it does NOT
@@ -177,35 +193,38 @@ function ListingCard({ listing, navigate }) {
           <span className="verified-chip">
             {isLand ? 'Listing reviewed by RentUg' : '✓ Verified'}
           </span>
+          {/* tier only arrives from the API once the paywall is live */}
+          {!isLand && listing.tier === 'premium' && (
+            <span className="premium-badge">Premium</span>
+          )}
+          <p className="price-badge">
+            {isLand ? (
+              formatUGX(listing.asking_price_ugx)
+            ) : (
+              <>
+                {formatUGX(listing.rent_ugx)} <span>/month</span>
+              </>
+            )}
+          </p>
         </div>
         <div className="feed-card-body">
+          <h3 className="feed-title">{listing.title}</h3>
+          <p className="feed-location">
+            <PinIcon />
+            {listing.area}, {listing.district}
+          </p>
           {isLand ? (
-            <>
-              <p className="feed-rent">{formatUGX(listing.asking_price_ugx)}</p>
-              <h3 className="feed-title">{listing.title}</h3>
-              <p className="feed-location">
-                {listing.area}, {listing.district}
-              </p>
-              <p className="land-badges">
-                <span className="land-badge">{listing.plot_size}</span>
-                <span className="land-badge">{tenureLabel(listing.tenure)}</span>
-                <span className="land-badge land-badge-title">
-                  {titleStatusLabel(listing.title_status)}
-                </span>
-              </p>
-            </>
+            <p className="land-badges">
+              <span className="land-badge">{listing.plot_size}</span>
+              <span className="land-badge">{tenureLabel(listing.tenure)}</span>
+              <span className="land-badge land-badge-title">
+                {titleStatusLabel(listing.title_status)}
+              </span>
+            </p>
           ) : (
-            <>
-              <p className="feed-rent">
-                {formatUGX(listing.rent_ugx)} <span>/month</span>
-                {/* tier only arrives from the API once the paywall is live */}
-                {listing.tier === 'premium' && <span className="premium-badge">Premium</span>}
-              </p>
-              <h3 className="feed-title">{listing.title}</h3>
-              <p className="feed-location">
-                {listing.area}, {listing.district} · {propertyTypeLabel(listing.property_type)}
-              </p>
-            </>
+            <p className="card-chips">
+              <span className="type-chip">{propertyTypeLabel(listing.property_type)}</span>
+            </p>
           )}
         </div>
       </a>
